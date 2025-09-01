@@ -1,0 +1,310 @@
+﻿
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube 播放器 - 完整穩定版</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #eee;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.light {
+      background: #f9f9f9;
+      color: #111;
+    }
+    #player {
+      width: 100%;
+      max-width: 100%;
+      aspect-ratio: 16 / 9;
+      height: auto;
+      max-height: calc(100vh - 200px);
+      margin: 20px auto;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    li {
+      padding: 4px 8px;
+      border-bottom: 1px solid #444;
+    }
+    .controls button, .skip-button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .toggle-dark {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    .filters, .settings {
+      margin-top: 20px;
+    }
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    #fallback {
+      display: none;
+      margin-top: 20px;
+      font-size: 16px;
+      color: #f66;
+    }
+  </style>
+</head>
+<body class="dark">
+  <button class="toggle-dark" onclick="toggleDarkMode()">切換暗黑模式</button>
+  <div class="controls">
+    <button onclick="playPrevious()">◀ 上一部</button>
+    <button onclick="playNext()">下一部 ▶</button>
+    <button onclick="reloadPlaylistAndShuffle()">重新洗牌 ↻</button>
+  </div>
+  <div class="controls" style="display:inline-block; margin-left:3em;">音量：<input type="range" id="volumeControl" min="0" max="100" value="15" oninput="setVolume(this.value)">
+    <span id="volumeValue">15%</span>
+</div>
+<div class="settings">
+    權重比例：
+    <select id="weightRatio">
+      <option value="30">30%</option>
+      <option value="60">60%</option>
+      <option value="80" selected>80%</option>
+      <option value="99">99%</option>
+    </select>
+  </div>
+  <div class="filters">
+    <label><input type="checkbox" class="weight-keyword" value="瘋神" checked> 瘋神</label>
+    <label><input type="checkbox" class="weight-keyword" value="嘉慶君"> 嘉慶君</label>
+    <label><input type="checkbox" class="weight-keyword" value="銅鈴眼"> 銅鈴眼</label>
+    <label><input type="checkbox" class="weight-keyword" value="玉玲瓏"> 玉玲瓏</label>
+    <label><input type="checkbox" class="weight-keyword" value="天黑請閉眼"> 天黑請閉眼</label>
+    <label><input type="checkbox" class="weight-keyword" value="天才衝衝衝"> 天才衝衝衝</label><span style="margin: 0 2em;">|</span><label><input type="checkbox" id="skipUnembed" checked> 略過無法嵌入影片</label><button onclick="toggleSkipMode()">執行</button><span id="skipStatus" style="color:#f66; margin-left: 1em;">（目前設定：略過無法嵌入）</span>
+  </div>
+  <p id="status">正在載入播放清單...</p>
+  <div id="fallback"></div>
+  <div id="player"></div>
+  <h3>播放順序</h3>
+  <ul id="playlist"></ul>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    const playlistId = "PLBCWta9qwiTFbZUMF51mfgrNWirfksMAY";
+    const apiKey = "AIzaSyCdZVwzVPkATuRDOMtEerrBHbOlNC_8B3c";
+    let videoIds = [], videoTitles = [], videoDurations = {}, current = 0;
+    let player, popupWindow = null, fallbackInterval = null;
+    let skipUnembedMode = true;
+
+    function toggleSkipMode() {
+      skipUnembedMode = document.getElementById('skipUnembed').checked;
+      document.getElementById('skipStatus').textContent = '（目前設定：' + (skipUnembedMode ? '略過無法嵌入' : '開啟新視窗') + '）';
+    }
+
+    const keywords = ["瘋神", "嘉慶君", "銅鈴眼", "玉玲瓏", "天黑請閉眼", "天才衝衝衝"];
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+      document.body.classList.toggle("light");
+    }
+
+    function setVolume(val) {
+      document.getElementById("volumeValue").textContent = val + "%";
+      if (player?.setVolume) player.setVolume(parseInt(val));
+    }
+
+    function getWeightKeywords() {
+      return Array.from(document.querySelectorAll(".weight-keyword:checked")).map(cb => cb.value);
+    }
+
+    function getKeyword(title) {
+      return keywords.find(k => title.includes(k)) || "";
+    }
+
+    function enforceKeywordVariety(arr) {
+      let result = [...arr], streak = 1;
+      for (let i = 1; i < result.length; i++) {
+        let prev = getKeyword(result[i - 1].title);
+        let curr = getKeyword(result[i].title);
+        if (prev && curr === prev) {
+          streak++;
+          if (streak >= 3) {
+            const alt = result.find(v => getKeyword(v.title) !== curr);
+            if (alt) {
+              result.splice(result.indexOf(alt), 1);
+              result.splice(i, 0, alt);
+              streak = 1;
+            }
+          }
+        } else {
+          streak = 1;
+        }
+      }
+      return result;
+    }
+
+    function weightedShuffle(ids, titles) {
+      const selected = getWeightKeywords();
+      const ratio = parseInt(document.getElementById("weightRatio").value);
+      let weighted = [];
+
+      ids.forEach((id, i) => {
+        const title = titles[i];
+        let weight = 1;
+        selected.forEach(k => {
+
+          if (title.includes(k)) {
+            if (ratio === 30) weight += 1;
+            else if (ratio === 60) weight += 3;
+            else if (ratio === 80) weight += 10;
+            else if (ratio === 99) weight += 99;
+          }
+
+        });
+        for (let j = 0; j < weight; j++) {
+          weighted.push({ id, title });
+        }
+      });
+
+      let shuffled = weighted.sort(() => Math.random() - 0.5);
+      let seen = new Set();
+      let final = shuffled.filter(item => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
+
+      final = enforceKeywordVariety(final);
+      videoIds = final.map(v => v.id);
+      videoTitles = final.map(v => v.title);
+    }
+
+    function updatePlaylistDisplay() {
+      const list = document.getElementById("playlist");
+      list.innerHTML = "";
+      videoTitles.forEach((title, i) => {
+        const li = document.createElement("li");
+        li.textContent = (i === current ? "▶ " : "") + title;
+        list.appendChild(li);
+      });
+      document.getElementById("status").textContent = `正在播放影片： ${videoTitles[current]}`;
+    }
+
+    function playCurrent() {
+      clearInterval(fallbackInterval);
+      document.getElementById("fallback").style.display = "none";
+      const videoId = videoIds[current];
+      player.loadVideoById(videoId);
+      updatePlaylistDisplay();
+    }
+
+    function playNext() {
+  if (popupWindow && !popupWindow.closed) popupWindow.close();
+  popupWindow = null;
+      current = (current + 1) % videoIds.length;
+      playCurrent();
+    }
+
+    function playPrevious() {
+      current = (current - 1 + videoIds.length) % videoIds.length;
+      playCurrent();
+    }
+
+    function reloadPlaylistAndShuffle() {
+      console.log("🔁 重新載入 + 洗牌...");
+      fetchPlaylistItems(true);
+    }
+
+    async function fetchDurations(ids) {
+      for (let i = 0; i < ids.length; i += 50) {
+        const idChunk = ids.slice(i, i + 50).join(",");
+        const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${idChunk}&key=${apiKey}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        data.items.forEach(item => {
+          const duration = item.contentDetails.duration;
+          videoDurations[item.id] = iso8601ToSeconds(duration);
+        });
+      }
+    }
+
+    function iso8601ToSeconds(iso) {
+      const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      const h = parseInt(match[1] || "0"), m = parseInt(match[2] || "0"), s = parseInt(match[3] || "0");
+      return h * 3600 + m * 60 + s;
+    }
+
+    async function fetchPlaylistItems(forceReload = false) {
+      if (forceReload) { videoIds = []; videoTitles = []; }
+      let pageToken = "", safety = 0;
+      while (safety++ < 100) {
+        let url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`;
+        if (pageToken) url += `&pageToken=${pageToken}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.items || data.items.length === 0) break;
+        videoIds.push(...data.items.map(item => item.snippet.resourceId.videoId));
+        videoTitles.push(...data.items.map(item => item.snippet.title));
+        if (!data.nextPageToken) break;
+        pageToken = data.nextPageToken;
+      }
+      await fetchDurations(videoIds);
+      weightedShuffle(videoIds, videoTitles);
+      current = 0;
+      playCurrent();
+      updatePlaylistDisplay();
+    }
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        height: '450',
+        width: '800',
+        events: {
+          'onReady': () => {
+            player.setVolume(15);
+            playCurrent();
+          },
+          'onStateChange': e => {
+            if (e.data === YT.PlayerState.ENDED) playNext();
+          },
+          'onError': () => {
+            const videoId = videoIds[current];
+            const url = `https://www.youtube.com/watch?v=${videoId}`;
+            if (skipUnembedMode) { playNext(); return; }
+            popupWindow = window.open(url, '_blank', 'width=800,height=600');
+            const fallback = document.getElementById("fallback");
+            fallback.innerHTML = `⚠️ 無法嵌入播放<br>預計播放時間：<span id="countdown"></span> 秒<br><button class="skip-button" onclick="skipNow()">立即播放下一部</button>`;
+            fallback.style.display = "block";
+            let duration = videoDurations[videoId] || 60;
+            let countdown = duration + 5;
+            document.getElementById("countdown").textContent = countdown;
+            fallbackInterval = setInterval(() => {
+              countdown--;
+              document.getElementById("countdown").textContent = countdown;
+              if (countdown <= 0) skipNow();
+            }, 1000);
+          }
+        }
+      });
+    }
+
+    function skipNow() {
+  if (popupWindow && !popupWindow.closed) popupWindow.close();
+  popupWindow = null;
+      clearInterval(fallbackInterval);
+      if (popupWindow && !popupWindow.closed) popupWindow.close();
+      popupWindow = null;
+      playNext();
+    }
+
+    fetchPlaylistItems();
+  </script>
+</body>
+</html>
