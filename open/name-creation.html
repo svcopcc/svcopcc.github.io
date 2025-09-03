@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣姓名產生器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-lg space-y-6 transform transition-transform duration-500 hover:scale-105">
+        <h1 class="text-3xl font-bold text-center text-gray-800 tracking-wide">台灣姓名產生器</h1>
+        
+        <div class="space-y-4">
+            <!-- 姓名數量設定 -->
+            <div>
+                <label for="nameCount" class="block text-gray-700 font-medium mb-1">
+                    要產生幾個姓名？
+                </label>
+                <input type="number" id="nameCount" value="10" min="1" max="100"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
+            </div>
+
+            <!-- 分隔符號設定 -->
+            <div>
+                <label for="separator" class="block text-gray-700 font-medium mb-1">
+                    選擇分隔符號
+                </label>
+                <select id="separator"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
+                    <option value="\n">換行 (最常用)</option>
+                    <option value=" ">空白</option>
+                    <option value=",">逗號 (,) </option>
+                    <option value=", ">逗號加空白 (, ) </option>
+                    <option value=" | ">豎線加空白 ( | )</option>
+                </select>
+            </div>
+            
+            <!-- 產生按鈕 -->
+            <button id="generateBtn"
+                    class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 transform hover:scale-105">
+                產生姓名
+            </button>
+        </div>
+
+        <!-- 輸出結果與複製按鈕 -->
+        <div class="mt-6">
+            <div class="flex justify-between items-center mb-1">
+                <label for="outputArea" class="block text-gray-700 font-medium">
+                    產生結果
+                </label>
+                <button id="copyBtn"
+                        class="bg-gray-200 text-gray-700 text-sm font-medium py-1 px-3 rounded-lg hover:bg-gray-300 transition duration-200 transform hover:scale-105">
+                    複製
+                </button>
+            </div>
+            <textarea id="outputArea" rows="10" readonly
+                      class="w-full p-4 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 resize-none whitespace-pre-wrap"></textarea>
+        </div>
+    </div>
+
+    <script>
+        // 台灣常見姓氏列表
+        const surnames = [
+            "陳", "林", "黃", "張", "李", "王", "吳", "劉", "蔡", "楊",
+            "許", "鄭", "謝", "郭", "洪", "曾", "廖", "賴", "徐", "周",
+            "葉", "蘇", "莊", "呂", "江", "何", "蕭", "羅", "高", "潘"
+        ];
+
+        // 台灣常見雙字名第一字列表
+        const firstNamesOne = [
+            "志", "俊", "嘉", "家", "文", "宏", "建", "明", "偉", "國",
+            "淑", "美", "雅", "佩", "佳", "慧", "靜", "秀", "玉", "怡"
+        ];
+
+        // 台灣常見雙字名第二字列表
+        const firstNamesTwo = [
+            "明", "豪", "傑", "宏", "華", "霖", "翰", "翔", "德", "維",
+            "君", "玲", "芳", "惠", "真", "婷", "萱", "蓉", "珊", "萍"
+        ];
+
+        // 台灣常見單字名列表
+        const singleFirstNames = [
+            "翔", "傑", "毅", "恩", "浩", "晴", "妍", "柔", "涵", "潔"
+        ];
+
+        // 取得隨機姓氏
+        function getRandomSurname() {
+            return surnames[Math.floor(Math.random() * surnames.length)];
+        }
+
+        // 取得隨機名字（單字或雙字）
+        function getRandomGivenName() {
+            // 隨機決定產生單字名或雙字名，雙字名的機率較高
+            if (Math.random() < 0.9) {
+                const first = firstNamesOne[Math.floor(Math.random() * firstNamesOne.length)];
+                const second = firstNamesTwo[Math.floor(Math.random() * firstNamesTwo.length)];
+                return first + second;
+            } else {
+                return singleFirstNames[Math.floor(Math.random() * singleFirstNames.length)];
+            }
+        }
+
+        // 產生姓名並顯示
+        document.getElementById('generateBtn').addEventListener('click', () => {
+            const count = document.getElementById('nameCount').value;
+            const separatorValue = document.getElementById('separator').value;
+            const outputArea = document.getElementById('outputArea');
+
+            if (count < 1 || count > 100) {
+                outputArea.value = "請輸入 1 到 100 之間的數字。";
+                return;
+            }
+
+            const generatedNames = [];
+            for (let i = 0; i < count; i++) {
+                const surname = getRandomSurname();
+                const givenName = getRandomGivenName();
+                generatedNames.push(surname + givenName);
+            }
+
+            // 處理換行符號
+            const finalOutput = generatedNames.join(separatorValue === '\\n' ? '\n' : separatorValue);
+            
+            outputArea.value = finalOutput;
+        });
+
+        // 複製按鈕功能
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const outputArea = document.getElementById('outputArea');
+            outputArea.select();
+            outputArea.setSelectionRange(0, 99999); // 適用於行動裝置
+            document.execCommand('copy');
+        });
+    </script>
+
+</body>
+</html>
