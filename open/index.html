@@ -1,1 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公平抽獎機器人</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            max-width: 800px;
+            width: 100%;
+            margin: 1rem;
+        }
+        .title {
+            color: #0c4a6e;
+            font-size: 2.25rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #475569;
+            margin-bottom: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #334155;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+        }
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #0c4a6e;
+            box-shadow: 0 0 0 3px rgba(12, 74, 110, 0.2);
+        }
+        button {
+            width: 100%;
+            padding: 1rem;
+            background-color: #0e7490;
+            color: white;
+            font-weight: 700;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        button:hover {
+            background-color: #0f76a6;
+        }
+        .results {
+            margin-top: 2rem;
+        }
+        .results-section {
+            background-color: #f8fafc;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            border: 1px solid #e2e8f0;
+        }
+        .results-section h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #22c55e;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            opacity: 0;
+            visibility: hidden;
+        }
+        .message-box.show {
+            transform: translate(-50%, 0);
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        .modal-content button {
+            margin-top: 1rem;
+            width: 80%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
+<div class="container mx-auto p-8 bg-white rounded-xl shadow-lg">
+    <h1 class="text-3xl font-bold text-center text-sky-800 mb-2">公平抽獎機器人</h1>
+    <p class="text-center text-gray-600 mb-8">請輸入抽獎活動資訊來開始。</p>
+
+    <div class="form-group">
+        <label for="eventName" class="block text-gray-700 font-semibold mb-2">活動名稱：</label>
+        <input type="text" id="eventName" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-800" placeholder="例如：夏日感恩回饋抽獎">
+    </div>
+
+    <div class="form-group">
+        <label for="prizes" class="block text-gray-700 font-semibold mb-2">獎項名稱*數量 (每行一個，例如：特獎*1, 普獎*5)：</label>
+        <textarea id="prizes" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-800" placeholder="例如：
+特獎*1
+頭獎*2
+普獎*10"></textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="participants" class="block text-gray-700 font-semibold mb-2">所有參與者名單 (每行一個姓名)：</label>
+        <textarea id="participants" rows="6" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-800" placeholder="例如：
+王小明
+李小華
+陳大同"></textarea>
+    </div>
+
+    <div class="flex flex-col space-y-4">
+        <button id="startBtn" onclick="startLottery()" class="bg-cyan-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-cyan-700 transition duration-300">
+            開始抽獎
+        </button>
+        <button id="reDrawBtn" onclick="reDraw()" class="hidden bg-gray-500 text-white font-bold py-3 rounded-lg shadow-md hover:bg-gray-600 transition duration-300">
+            未更新內容再次抽獎
+        </button>
+    </div>
+    
+    <div id="results" class="results hidden">
+        <h2 class="text-2xl font-bold text-center mt-8 text-sky-800">抽獎結果</h2>
+        <p class="text-center text-gray-600 mt-2">
+            總參與人數：<span id="totalParticipantsCount"></span> 人
+            <br>
+            抽獎時間：<span id="drawTime"></span>
+        </p>
+        
+        <div id="winnersSection" class="results-section hidden">
+            <h3 class="text-lg font-semibold text-gray-800">得獎者名單</h3>
+            <div id="prizesResults"></div>
+        </div>
+
+        <div id="losersSection" class="results-section hidden">
+            <h3 class="text-lg font-semibold text-gray-800">未得獎者名單 (<span id="losersCount"></span> 人)</h3>
+            <ul id="losersList"></ul>
+        </div>
+
+        <div class="mt-8 flex justify-center">
+            <button onclick="showExportModal()" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300">
+                匯出抽獎結果
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="messageBox" class="message-box"></div>
+
+<!-- Export Modal -->
+<div id="exportModal" class="modal-overlay">
+    <div class="modal-content">
+        <h4 class="text-xl font-bold text-gray-800 mb-4">請選擇匯出格式</h4>
+        <button onclick="exportAsText()" class="bg-gray-500 hover:bg-gray-600">純文字 (.txt)</button>
+        <button onclick="exportAsCsv()" class="bg-green-600 hover:bg-green-700">CSV (.csv)</button>
+        <button onclick="exportAsJson()" class="bg-blue-600 hover:bg-blue-700">JSON (.json)</button>
+        <button onclick="closeExportModal()" class="bg-red-500 hover:bg-red-600">取消</button>
+    </div>
+</div>
+
+<script>
+    let currentWinnersData = [];
+    let currentLosersData = [];
+    let currentTotalParticipants = 0;
+    let currentDrawTime = '';
+    let currentEventName = '';
+    let drawCount = 0;
+    
+    // Store the last valid inputs to check for changes
+    let lastInputs = { eventName: '', prizes: '', participants: '' };
+
+    const startBtn = document.getElementById('startBtn');
+    const reDrawBtn = document.getElementById('reDrawBtn');
+    const eventNameInput = document.getElementById('eventName');
+    const prizesInput = document.getElementById('prizes');
+    const participantsInput = document.getElementById('participants');
+
+    function showMessage(message, isSuccess = true) {
+        const messageBox = document.getElementById('messageBox');
+        messageBox.textContent = message;
+        messageBox.style.backgroundColor = isSuccess ? '#22c55e' : '#ef4444';
+        messageBox.classList.add('show');
+        setTimeout(() => {
+            messageBox.classList.remove('show');
+        }, 3000);
+    }
+
+    function showExportModal() {
+        if (currentWinnersData.length === 0 && currentLosersData.length === 0) {
+            showMessage('目前沒有抽獎結果可供匯出。', false);
+            return;
+        }
+        document.getElementById('exportModal').style.display = 'flex';
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
+    }
+
+    function resetDrawState() {
+        drawCount = 0;
+        startBtn.classList.remove('hidden');
+        reDrawBtn.classList.add('hidden');
+        reDrawBtn.textContent = '未更新內容再次抽獎';
+    }
+
+    // Attach event listeners to reset state on input change
+    eventNameInput.addEventListener('input', resetDrawState);
+    prizesInput.addEventListener('input', resetDrawState);
+    participantsInput.addEventListener('input', resetDrawState);
+
+    function startLottery() {
+        if (drawCount > 0) {
+            showMessage('請使用「未更新內容再次抽獎」按鈕重新抽獎。', false);
+            return;
+        }
+
+        const eventName = eventNameInput.value.trim();
+        const prizesText = prizesInput.value.trim();
+        const participantsText = participantsInput.value.trim();
+
+        if (!eventName || !prizesText || !participantsText) {
+            showMessage('請完整填寫所有欄位！', false);
+            return;
+        }
+
+        lastInputs = { eventName, prizes: prizesText, participants: participantsText };
+        drawCount = 1;
+        performDrawLogic(eventName, prizesText, participantsText, drawCount);
+        
+        startBtn.classList.add('hidden');
+        reDrawBtn.classList.remove('hidden');
+        reDrawBtn.textContent = '未更新內容再次抽獎 (第 2 次)';
+    }
+
+    function reDraw() {
+        if (drawCount === 0) {
+            showMessage('請先進行首次抽獎。', false);
+            return;
+        }
+        
+        // Use the last valid inputs for re-draw
+        drawCount++;
+        performDrawLogic(lastInputs.eventName, lastInputs.prizes, lastInputs.participants, drawCount);
+        reDrawBtn.textContent = `未更新內容再次抽獎 (第 ${drawCount + 1} 次)`;
+    }
+
+    function performDrawLogic(eventName, prizesText, participantsText, currentDrawCount) {
+        const prizes = prizesText.split('\n').filter(p => p).map(p => {
+            const parts = p.split('*');
+            return {
+                name: parts[0].trim(),
+                count: parseInt(parts[1].trim(), 10) || 0
+            };
+        });
+
+        const totalPrizes = prizes.reduce((sum, prize) => sum + prize.count, 0);
+        const allParticipants = participantsText.split('\n').filter(p => p.trim() !== '');
+
+        const uniqueParticipants = [...new Set(allParticipants)];
+        if (allParticipants.length !== uniqueParticipants.length) {
+            showMessage('參與者名單中存在重複姓名，已為您自動去重。');
+        }
+        
+        if (totalPrizes === 0) {
+            showMessage('獎項數量未輸入，或格式錯誤，請檢查！', false);
+            resetDrawState();
+            return;
+        }
+
+        if (totalPrizes > uniqueParticipants.length) {
+            showMessage('獎項總數（' + totalPrizes + '）超過參與者人數（' + uniqueParticipants.length + '），請重新設定。', false);
+            resetDrawState();
+            return;
+        }
+
+        currentTotalParticipants = uniqueParticipants.length;
+        currentEventName = eventName;
+        
+        const shuffledParticipants = [...uniqueParticipants];
+        for (let i = shuffledParticipants.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledParticipants[i], shuffledParticipants[j]] = [shuffledParticipants[j], shuffledParticipants[i]];
+        }
+
+        const winners = shuffledParticipants.slice(0, totalPrizes);
+        const losers = shuffledParticipants.slice(totalPrizes);
+
+        const winnerSet = new Set(winners);
+        if (winnerSet.size !== winners.length) {
+            console.error('得獎者名單中發現重複，請檢查演算法。');
+            showMessage('抽獎出錯，請重試。', false);
+            return;
+        }
+
+        if (winners.length + losers.length !== currentTotalParticipants) {
+            console.error('得獎者與未得獎者人數總和不等於參與人數。');
+            showMessage('抽獎出錯，請重試。', false);
+            return;
+        }
+
+        // Prepare data for export
+        currentWinnersData = [];
+        let winnerIndex = 0;
+        prizes.forEach(prize => {
+            for (let i = 0; i < prize.count; i++) {
+                if (winners[winnerIndex]) {
+                    currentWinnersData.push({ prize: prize.name, winner: winners[winnerIndex] });
+                    winnerIndex++;
+                }
+            }
+        });
+        currentLosersData = losers;
+
+        displayResults(prizes, winners, losers, currentTotalParticipants, currentDrawCount);
+    }
+
+    function displayResults(prizes, winners, losers, totalParticipantsCount, currentDrawCount) {
+        document.getElementById('totalParticipantsCount').textContent = totalParticipantsCount;
+        
+        const now = new Date();
+        const formattedDate = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}`;
+        const formattedTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        currentDrawTime = `${formattedDate} ${formattedTime}`;
+        document.getElementById('drawTime').textContent = currentDrawTime;
+
+        const prizesResultsDiv = document.getElementById('prizesResults');
+        prizesResultsDiv.innerHTML = '';
+        
+        let winnerIndex = 0;
+        prizes.forEach(prize => {
+            const prizeContainer = document.createElement('div');
+            prizeContainer.className = 'my-4 p-4 bg-gray-50 rounded-lg border border-gray-200';
+            
+            const prizeTitle = document.createElement('h4');
+            prizeTitle.textContent = `${prize.name} (${prize.count} 名)`;
+            prizeTitle.className = 'font-bold text-gray-800 text-lg mb-2';
+            
+            const winnersListForPrize = document.createElement('ul');
+            winnersListForPrize.className = 'list-disc list-inside';
+            
+            for (let i = 0; i < prize.count; i++) {
+                const winnerName = winners[winnerIndex];
+                if (winnerName) {
+                    const li = document.createElement('li');
+                    li.textContent = winnerName;
+                    li.className = 'font-medium text-gray-700';
+                    winnersListForPrize.appendChild(li);
+                    winnerIndex++;
+                }
+            }
+            
+            prizeContainer.appendChild(prizeTitle);
+            prizeContainer.appendChild(winnersListForPrize);
+            prizesResultsDiv.appendChild(prizeContainer);
+        });
+
+        const losersList = document.getElementById('losersList');
+        losersList.innerHTML = '';
+        losers.forEach(loser => {
+            const li = document.createElement('li');
+            li.textContent = loser;
+            li.className = 'text-gray-500';
+            losersList.appendChild(li);
+        });
+        
+        document.getElementById('losersCount').textContent = losers.length;
+
+        document.getElementById('results').classList.remove('hidden');
+        document.getElementById('winnersSection').classList.remove('hidden');
+        document.getElementById('losersSection').classList.remove('hidden');
+        
+        const message = currentDrawCount > 1 ? `第 ${currentDrawCount} 次抽獎完成！` : '抽獎完成！';
+        showMessage(message);
+    }
+
+    function downloadFile(filename, content, mimeType) {
+        const element = document.createElement('a');
+        const blob = new Blob([content], { type: mimeType });
+        element.href = URL.createObjectURL(blob);
+        element.download = filename;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+
+    function exportAsCsv() {
+        if (currentWinnersData.length === 0 && currentLosersData.length === 0) {
+            showMessage('目前沒有抽獎結果可供匯出。', false);
+            closeExportModal();
+            return;
+        }
+        
+        let csvContent = `抽獎活動,${currentEventName}\n`;
+        csvContent += `抽獎時間,${currentDrawTime}\n`;
+        csvContent += `抽獎次數,${drawCount}\n\n`;
+        csvContent += `總參與人數,${currentTotalParticipants}\n`;
+        csvContent += `得獎人數,${currentWinnersData.length}\n`;
+        csvContent += `未得獎人數,${currentLosersData.length}\n\n`;
+        csvContent += "狀態,獎項名稱,姓名\n";
+
+        currentWinnersData.forEach(item => {
+            csvContent += `得獎,"${item.prize}","${item.winner}"\n`;
+        });
+        currentLosersData.forEach(loser => {
+            csvContent += `未得獎,,"${loser}"\n`;
+        });
+        
+        const filename = `${currentEventName}_完整抽獎結果.csv`;
+        downloadFile(filename, csvContent, 'text/csv;charset=utf-8;');
+        showMessage('CSV 檔案已匯出！');
+        closeExportModal();
+    }
+
+    function exportAsJson() {
+        if (currentWinnersData.length === 0 && currentLosersData.length === 0) {
+            showMessage('目前沒有抽獎結果可供匯出。', false);
+            closeExportModal();
+            return;
+        }
+
+        const jsonContent = JSON.stringify({
+            eventName: currentEventName,
+            drawTime: currentDrawTime,
+            drawCount: drawCount,
+            totalParticipants: currentTotalParticipants,
+            totalWinners: currentWinnersData.length,
+            totalLosers: currentLosersData.length,
+            winners: currentWinnersData,
+            losers: currentLosersData
+        }, null, 2);
+
+        const filename = `${currentEventName}_完整抽獎結果.json`;
+        downloadFile(filename, jsonContent, 'application/json;charset=utf-8;');
+        showMessage('JSON 檔案已匯出！');
+        closeExportModal();
+    }
+
+    function exportAsText() {
+        if (currentWinnersData.length === 0 && currentLosersData.length === 0) {
+            showMessage('目前沒有抽獎結果可供匯出。', false);
+            closeExportModal();
+            return;
+        }
+
+        let textContent = `抽獎活動：${currentEventName}\n`;
+        textContent += `抽獎時間：${currentDrawTime}\n`;
+        textContent += `抽獎次數：${drawCount}\n\n`;
+        textContent += `--- 統計 --- \n`;
+        textContent += `總參與人數：${currentTotalParticipants} 人\n`;
+        textContent += `得獎人數：${currentWinnersData.length} 人\n`;
+        textContent += `未得獎人數：${currentLosersData.length} 人\n\n`;
+
+        const prizesMap = {};
+        currentWinnersData.forEach(item => {
+            if (!prizesMap[item.prize]) {
+                prizesMap[item.prize] = [];
+            }
+            prizesMap[item.prize].push(item.winner);
+        });
+
+        textContent += `--- 得獎者名單 ---\n`;
+        for (const prize in prizesMap) {
+            textContent += `  ${prize} (${prizesMap[prize].length} 名)\n`;
+            prizesMap[prize].forEach(winner => {
+                textContent += `    - ${winner}\n`;
+            });
+        }
+        textContent += `\n--- 未得獎者名單 ---\n`;
+        currentLosersData.forEach(loser => {
+            textContent += `${loser}\n`;
+        });
+
+        const filename = `${currentEventName}_完整抽獎結果.txt`;
+        downloadFile(filename, textContent, 'text/plain;charset=utf-8;');
+        showMessage('純文字檔案已匯出！');
+        closeExportModal();
+    }
+</script>
+</body>
+</html>
