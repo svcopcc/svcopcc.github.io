@@ -1,0 +1,7 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="32" cy="32" r="30" fill="white" stroke="black" stroke-width="2"/>
+  
+  <path d="M28 20 L24 40 L28 40 L30 30 L34 40 L38 40 L34 20 Z" fill="black"/>
+  
+  <text x="32" y="50" font-family="serif" font-size="8" fill="black" text-anchor="middle" dominant-baseline="middle">VELVET</text>
+</svg>
