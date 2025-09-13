@@ -22,3 +22,8 @@
     --tw-bg-opacity: 1;
     background-color: rgb(0 143 23 / 52%);
 }
+
+.btn-bg-red {
+    --tw-bg-opacity: 1;
+    background-color: rgb(246 59 59);
+}
