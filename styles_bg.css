@@ -2,3 +2,9 @@
     --tw-bg-opacity: 1;
     background-color: rgb(255 232 204 / var(--tw-bg-opacity, 1));
 }
+
+
+.bg-dark-green {
+    --tw-bg-opacity: 1;
+    background-color: rgb(0 143 23);
+}
