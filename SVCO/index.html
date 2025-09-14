@@ -351,16 +351,41 @@
             </ul>
         </div>
 
-		<!-- Footer -->
+		<!-- Footer
 	    <footer class="mt-8 pt-6 text-center text-gray-400 text-sm">
 	        <p>Copyright &copy; 2025 YTC. VELVET . All rights reserved.</p>
-	    </footer>
+	    </footer> 
+		-->
+		
+		<!-- footer 引入 -->
+		<div id="footer-placeholder"></div>
 
 
 		
 
 
     <script>
+		//引入footer
+		document.addEventListener('DOMContentLoaded', () => {
+        
+        const footerPlaceholder = document.getElementById('footer-placeholder');
+        fetch('https://feixu.tw/footer.html')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load footer.html');
+                }
+                return response.text();
+            })
+            .then(html => {
+                footerPlaceholder.innerHTML = html;
+            })
+            .catch(error => console.error('Error loading footer:', error));
+        
+        }
+		//#_引入footer
+
+
+		
         // 搜尋功能
         function performSearch() {
             const searchTerm = document.getElementById('searchBox').value.toLowerCase();
