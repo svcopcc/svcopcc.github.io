@@ -27,3 +27,7 @@
     --tw-bg-opacity: 1;
     background-color: rgb(246 59 59);
 }
+
+.text-center {
+    text-align: center;
+}
