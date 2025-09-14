@@ -365,79 +365,81 @@
 
 
     <script>
-		//引入footer
-		document.addEventListener('DOMContentLoaded', () => {
-        
-        const footerPlaceholder = document.getElementById('footer-placeholder');
-        fetch('/footer.html')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to load footer.html');
-                }
-                return response.text();
-            })
-            .then(html => {
-                footerPlaceholder.innerHTML = html;
-            })
-            .catch(error => console.error('Error loading footer:', error));
-        
-        }
-		//#_引入footer
+	document.addEventListener('DOMContentLoaded', () => {
+	  // 1) 安全載入 footer（請依你的實際路徑選一個）
+	  // 若 footer.html 跟這個頁面在同一層：
+	  const FOOTER_PATH = 'footer.html';
+	  // 若部署在根目錄（https://feixu.tw/）：
+	  // const FOOTER_PATH = '/footer.html';
+	  // 若部署在子路徑（例如 https://feixu.tw/BBD/）：
+	  // const FOOTER_PATH = '/BBD/footer.html';
+	
+	  const footerPlaceholder = document.getElementById('footer-placeholder');
+	  if (footerPlaceholder) {
+	    fetch(FOOTER_PATH)
+	      .then(r => {
+	        if (!r.ok) throw new Error(`Failed to load ${FOOTER_PATH} (${r.status})`);
+	        return r.text();
+	      })
+	      .then(html => { footerPlaceholder.innerHTML = html; })
+	      .catch(err => {
+	        console.error('Error loading footer:', err);
+	        // 失敗時給個簡單 fallback，避免空白
+	        footerPlaceholder.innerHTML = '<footer style="margin-top:24px;color:#fff;opacity:.8;text-align:center;">載入頁尾失敗</footer>';
+	      });
+	  }
+	
+	  // 2) 只有存在 searchBox 才綁定事件，避免空指標錯誤
+	  const searchBox = document.getElementById('searchBox');
+	  if (searchBox) {
+	    const performSearch = () => {
+	      const searchTerm = searchBox.value.toLowerCase();
+	      const resultsDiv = document.getElementById('searchResults');
+	      if (!resultsDiv) return;
+	
+	      const mockResults = {
+	        '戶政': ['內政部戶政司', '戶籍謄本申請', '身分證換發'],
+	        '稅務': ['財政部國稅局', '地方稅務局', '報稅軟體下載'],
+	        '教育': ['教育部', '各級學校', '學歷認證'],
+	        '銀行': ['網路銀行', '信用卡服務', '貸款申請'],
+	        '健保': ['健保署', '健保卡申請', '醫療院所查詢']
+	      };
+	
+	      let results = [];
+	      for (let key in mockResults) {
+	        if (searchTerm.includes(key) || key.includes(searchTerm)) {
+	          results = results.concat(mockResults[key]);
+	        }
+	      }
+	
+	      if (results.length > 0) {
+	        resultsDiv.innerHTML = `
+	          <div style="background:#e8f5e8;padding:20px;border-radius:10px;margin-top:20px;">
+	            <h4>搜尋結果:</h4>
+	            ${results.map(r => `<div style="margin:10px 0;padding:10px;background:white;border-radius:5px;">📌 ${r}</div>`).join('')}
+	          </div>`;
+	      } else if (searchTerm.trim()) {
+	        resultsDiv.innerHTML = `
+	          <div style="background:#f8d7da;padding:20px;border-radius:10px;margin-top:20px;text-align:center;">
+	            <p>未找到相關結果，請嘗試其他關鍵字</p>
+	          </div>`;
+	      } else {
+	        resultsDiv.innerHTML = '';
+	      }
+	    };
+	
+	    searchBox.addEventListener('keypress', e => {
+	      if (e.key === 'Enter') performSearch();
+	    });
+	  }
+	
+	  // 3) 區塊進場動畫
+	  const sections = document.querySelectorAll('.guide-section');
+	  sections.forEach((section, index) => {
+	    section.style.animationDelay = `${index * 0.1}s`;
+	  });
+	}); // ← 別忘了這個結尾！
+	</script>
 
-
-		
-        // 搜尋功能
-        function performSearch() {
-            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
-            const resultsDiv = document.getElementById('searchResults');
-            
-            const mockResults = {
-                '戶政': ['內政部戶政司', '戶籍謄本申請', '身分證換發'],
-                '稅務': ['財政部國稅局', '地方稅務局', '報稅軟體下載'],
-                '教育': ['教育部', '各級學校', '學歷認證'],
-                '銀行': ['網路銀行', '信用卡服務', '貸款申請'],
-                '健保': ['健保署', '健保卡申請', '醫療院所查詢']
-            };
-            
-            let results = [];
-            for (let key in mockResults) {
-                if (searchTerm.includes(key) || key.includes(searchTerm)) {
-                    results = results.concat(mockResults[key]);
-                }
-            }
-            
-            if (results.length > 0) {
-                resultsDiv.innerHTML = `
-                    <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin-top: 20px;">
-                        <h4>搜尋結果:</h4>
-                        ${results.map(result => `<div style="margin: 10px 0; padding: 10px; background: white; border-radius: 5px;">📌 ${result}</div>`).join('')}
-                    </div>
-                `;
-            } else if (searchTerm.trim()) {
-                resultsDiv.innerHTML = `
-                    <div style="background: #f8d7da; padding: 20px; border-radius: 10px; margin-top: 20px; text-align: center;">
-                        <p>未找到相關結果，請嘗試其他關鍵字</p>
-                    </div>
-                `;
-            } else {
-                resultsDiv.innerHTML = '';
-            }
-        }
-        
-        // Enter鍵搜尋
-        document.getElementById('searchBox').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        });
-        
-        // 添加頁面載入動畫
-        window.addEventListener('load', function() {
-            const sections = document.querySelectorAll('.guide-section');
-            sections.forEach((section, index) => {
-                section.style.animationDelay = `${index * 0.1}s`;
-            });
-        });
-    </script>
 </body>
 </html>
